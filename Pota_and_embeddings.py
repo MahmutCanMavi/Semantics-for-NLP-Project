@@ -232,3 +232,7 @@ for tok in tokens_not_in:
 
 # array(['False', 'True', 'missing'], dtype='<U7')
 # array([ 53,  64, 624])
+
+# match german words in english embedding
+
+np.sum([tok in vocab_de for tok in tokens_not_in]) # 145
