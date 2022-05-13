@@ -1,5 +1,6 @@
 # %% 
-
+import matplotlib.pyplot as plt
+#from matplotlib.pyplot import hist
 import pandas as pd
 import numpy as np
 import nltk
@@ -8,7 +9,9 @@ from nltk.tokenize import word_tokenize
 from ekphrasis.classes.preprocessor import TextPreProcessor
 from ekphrasis.classes.tokenizer import SocialTokenizer
 from ekphrasis.dicts.emoticons import emoticons
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
 nltk.download('punkt')
+nltk.download('vader_lexicon')
 
 # %%
 
@@ -37,22 +40,57 @@ text_processor = TextPreProcessor(
     
     unpack_hashtags=True,  # perform word segmentation on hashtags. #IS IT GOOD IDEA TO KEEP? 
     unpack_contractions=False,  # Unpack contractions (can't -> can not). WORD EMBEDDINGS INCLUDE CONTRACTIONS
-    spell_correct_elong=False,  # spell correction for elongated words. I'M THINKING IT MIGHT CAUSE TROUBLE WHEN SEVERAL LANGUAGES
+    spell_correct_elong=False  # spell correction for elongated words. I'M THINKING IT MIGHT CAUSE TROUBLE WHEN SEVERAL LANGUAGES
                                 #DONT THINK THERE WILL BE MANY ELONGATED WORDS IN ECONOMIC TWEETS
     
     # select a tokenizer. You can use SocialTokenizer, or pass your own
     # the tokenizer, should take as input a string and return a list of tokens
-    tokenizer=SocialTokenizer(lowercase=True).tokenize,
+    #tokenizer=SocialTokenizer(lowercase=True).tokenize,
     
     # list of dictionaries, for replacing tokens extracted from the text,
     # with other expressions. You can pass more than one dictionaries.
     #dicts=[emoticons]   COMMENTED. LEAVES EMOTICONS AS EMOTICONS
 )
 
-
-print(df)
-# %%
 df['pota'] = df['lowercase'].map(text_processor.pre_process_doc)
+
+
+
+# %%
+
+sid = SentimentIntensityAnalyzer()
+vader_scores=df["pota"].map(sid.polarity_scores)
+vader_scores=pd.DataFrame(list(vader_scores))
+
+print(vader_scores)
+
+# %%
+plt.hist(vader_scores["neg"])
+# %%
+plt.hist(vader_scores["neu"])
+# %%
+plt.hist(vader_scores["pos"])
+# %%
+plt.hist(vader_scores["compound"])
+
+# %%
+print(np.count_nonzero(vader_scores["compound"]<=-.5))
+print(np.count_nonzero(vader_scores["compound"]>=.5))
+
+
+(123+117)/603
+
+
+
+
+
+
+
+
+
+
+
+
 
 # %%
 #We must separate english and german tweets in order to tokenize and take away stop words
@@ -71,25 +109,16 @@ de_tweets=df[df['lang']=='de']
         #Will it be a problem that it separated words w apostrophes? can't --> can, 't
         #It separates @ from username!
 
-
+# %%
 #Removing stopwords
 en_stopwords=stopwords.words('english')
 de_stopwords=stopwords.words('german')
 
-# %%
-
-
 en_tweets['tokenized_no_sw']=np.zeros(len(en_tweets["lowercase"]))
 de_tweets['tokenized_no_sw']=np.zeros(len(de_tweets["lowercase"]))
-print(en_tweets)
-# %%
 
 en_tweets['tokenized_no_sw']=en_tweets['pota'].map(lambda x:[word for word in x if not word in en_stopwords])
 de_tweets['tokenized_no_sw']=de_tweets['pota'].map(lambda x:[word for word in x if not word in de_stopwords])
-
-
-#for s in en_tweets["id"]:
-#    en_tweets['tokenized_no_sw'][s]=[word for word in en_tweets['pota'][s] if not word in en_stopwords]
 
 # %%
 ##Reading embeddings
@@ -123,6 +152,10 @@ for line in en_embeddings:
     print(i)
 
 en_embeddings.close()
+
+
+
+# %%
 
 
 
