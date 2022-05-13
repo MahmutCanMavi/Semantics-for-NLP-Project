@@ -189,9 +189,6 @@ en_embeddings.close()
 # %%
 
 
-
-
-
 # de_emb_dict["altersgeschützt"] 100-d vector
 
 len(vocab_en) != len(np.unique(vocab_en)) # why?
@@ -213,3 +210,25 @@ for word in en_tweet_vocab:
 np.mean(tokens_in_en_vocab) # 87% of unique tokens from the german tweets seem to be in the german embedding
 k = np.where(np.array(tokens_in_en_vocab) == False)[0]
 en_embeddings.close()
+
+#Another common trick, particularly when working with word embedding based solutions  
+#is to replace the word with a nearby word from some form of synonym dictionary. Example : 
+#‘I want to know what you are consuming’. Suppose consuming is not in the vocabulary,  replace it with ‘I want to know what you are eating’. 
+#Take a look at the following article for more details. 
+# https://medium.com/cisco-emerge/creating-semantic-representations-of-out-of-vocabulary-words-for-common-nlp-tasks-842dbdafba18
+
+nltk.download('wordnet')
+from nltk.corpus import wordnet
+synonym_ready = []
+
+for tok in tokens_not_in:
+    synset = wordnet.synsets(tok)
+    if (len(synset) == 0): 
+        synonym_ready.append("missing")
+    else:
+        synonym_ready.append(any([sys._name[0:len(sys._name)-5] in vocab_en for sys in synset]))
+
+(unique, counts) = np.unique(synonym_ready, return_counts=True)
+
+# array(['False', 'True', 'missing'], dtype='<U7')
+# array([ 53,  64, 624])
