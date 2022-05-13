@@ -12,9 +12,9 @@ nltk.download('punkt')
 
 # %%
 
-df=pd.read_csv("tweet_fetch_050422.csv")
-df['text']=df['text'].astype(str)
-df['lowercase']=df['text'].map(lambda x: x.lower())
+df=pd.read_csv("tweet_samp_060522_annotate.csv")
+df['tweet']=df['tweet'].astype(str)
+df['lowercase']=df['tweet'].map(lambda x: x.lower())
 
 # %%
 
@@ -87,6 +87,7 @@ print(en_tweets)
 en_tweets['tokenized_no_sw']=en_tweets['pota'].map(lambda x:[word for word in x if not word in en_stopwords])
 de_tweets['tokenized_no_sw']=de_tweets['pota'].map(lambda x:[word for word in x if not word in de_stopwords])
 
+## missing NER, remove punctation 
 
 #for s in en_tweets["id"]:
 #    en_tweets['tokenized_no_sw'][s]=[word for word in en_tweets['pota'][s] if not word in en_stopwords]
@@ -94,41 +95,78 @@ de_tweets['tokenized_no_sw']=de_tweets['pota'].map(lambda x:[word for word in x 
 # %%
 ##Reading embeddings
 
+# get embeddings from here: https://drive.google.com/drive/folders/1K0WjPKtar0AvODPAf8VNB1n_ZJAI0WjL?usp=sharing
+
+## German embeddings
 
 with open('crosslingual_EN-DE_german_twitter_100d_weighted_modified.txt',encoding="Latin-1") as de_embeddings:
     de_emb_dict={}
+    vocab_de = []
 
- 
     for i, line in enumerate(de_embeddings):
         values = line.split()
         word = values[0]
         vector = np.asarray(values[1:], dtype='float32')
         de_emb_dict[word] = vector
-        print(word)
-        print(i)
+        vocab_de.append(word)
+        #print(word)
+        #print(i)
+
+# de_emb_dict["altersgeschützt"] 100-d vector
+
+len(vocab_de) != len(np.unique(vocab_de)) # why?
+
+# concatenate tokens and match unique tokens (i.e. vocabulary) with the emb words 
+de_tweets['tokenized_no_sw'] = de_tweets['tokenized_no_sw'].apply(lambda x: np.array(x))
+de_tweet_vocab = np.concatenate(de_tweets['tokenized_no_sw'].values)
+de_tweet_vocab = list(np.unique(de_tweet_vocab))
+
+tokens_in_vocab = []
+for word in de_tweet_vocab:
+    tokens_in_vocab.append(word in vocab_de)
+
+np.mean(tokens_in_vocab) # 88% of unique tokens from the german tweets seem to be in the german embedding
+
+
+
 # %%
+
+## English embeddings
 
 en_embeddings=open('crosslingual_EN-DE_english_twitter_100d_weighted_modified.txt',encoding="Latin-1")
 
 en_emb_dict={}
+vocab_en = []
 i=0
 
 for line in en_embeddings:
     values = line.split()
     word = values[0]
+    vocab_en.append(word)
     vector = np.asarray(values[1:], dtype='float32')
     en_emb_dict[word] = vector
     i=i+1
-    print(word)
-    print(i)
+    #print(word)
+    #print(i)
 
+# de_emb_dict["altersgeschützt"] 100-d vector
+
+len(vocab_en) != len(np.unique(vocab_en)) # why?
+
+# concatenate tokens and match unique tokens (i.e. vocabulary) with the emb words 
+en_tweets['tokenized_no_sw'] = en_tweets['tokenized_no_sw'].apply(lambda x: np.array(x))
+en_tweet_vocab = np.concatenate(en_tweets['tokenized_no_sw'].values)
+en_tweet_vocab = list(np.unique(en_tweet_vocab))
+
+tokens_in_en_vocab = []
+tokens_in = []
+tokens_not_in = []
+for word in en_tweet_vocab:
+    is_in = word in vocab_en
+    tokens_in_en_vocab.append(is_in)
+    if (is_in): tokens_in.append(word)
+    if (not is_in): tokens_not_in.append(word)
+
+np.mean(tokens_in_en_vocab) # 87% of unique tokens from the german tweets seem to be in the german embedding
+k = np.where(np.array(tokens_in_en_vocab) == False)[0]
 en_embeddings.close()
-
-
-
-
-
-
-
-
-
