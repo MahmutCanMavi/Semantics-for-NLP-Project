@@ -12,12 +12,19 @@ from ekphrasis.dicts.emoticons import emoticons
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 nltk.download('punkt')
 nltk.download('vader_lexicon')
+from ner import remove_entities # see ner.py
 
 # %%
 
 df=pd.read_csv("tweet_samp_060522_annotate.csv")
-df['tweet']=df['tweet'].astype(str)
-df['lowercase']=df['tweet'].map(lambda x: x.lower())
+df['tweet']=df['tweet'].astype('str') # maybe try astype('unicode') and see if out-of-vocab is affected
+
+# %% NER
+
+
+#df['ner_tweet'] = df["tweet"] # check if out-of-vocab is affected
+# x = NER_res.ents has x.text and x.label_
+df['lowercase']=df['ner_tweet'].map(lambda x: x.lower())
 
 # %%
 
@@ -40,12 +47,12 @@ text_processor = TextPreProcessor(
     
     unpack_hashtags=True,  # perform word segmentation on hashtags. #IS IT GOOD IDEA TO KEEP? 
     unpack_contractions=False,  # Unpack contractions (can't -> can not). WORD EMBEDDINGS INCLUDE CONTRACTIONS
-    spell_correct_elong=False  # spell correction for elongated words. I'M THINKING IT MIGHT CAUSE TROUBLE WHEN SEVERAL LANGUAGES
+    spell_correct_elong=False,  # spell correction for elongated words. I'M THINKING IT MIGHT CAUSE TROUBLE WHEN SEVERAL LANGUAGES
                                 #DONT THINK THERE WILL BE MANY ELONGATED WORDS IN ECONOMIC TWEETS
     
     # select a tokenizer. You can use SocialTokenizer, or pass your own
     # the tokenizer, should take as input a string and return a list of tokens
-    #tokenizer=SocialTokenizer(lowercase=True).tokenize,
+    tokenizer=SocialTokenizer(lowercase=True).tokenize,
     
     # list of dictionaries, for replacing tokens extracted from the text,
     # with other expressions. You can pass more than one dictionaries.
@@ -53,7 +60,6 @@ text_processor = TextPreProcessor(
 )
 
 df['pota'] = df['lowercase'].map(text_processor.pre_process_doc)
-
 
 
 # %%
@@ -80,18 +86,6 @@ print(np.count_nonzero(vader_scores["compound"]>=.5))
 
 (123+117)/603
 
-
-
-
-
-
-
-
-
-
-
-
-
 # %%
 #We must separate english and german tweets in order to tokenize and take away stop words
 
@@ -114,13 +108,11 @@ de_tweets=df[df['lang']=='de']
 en_stopwords=stopwords.words('english')
 de_stopwords=stopwords.words('german')
 
-en_tweets['tokenized_no_sw']=np.zeros(len(en_tweets["lowercase"]))
-de_tweets['tokenized_no_sw']=np.zeros(len(de_tweets["lowercase"]))
+en_tweets['tokenized_no_sw']=np.zeros(len(en_tweets["pota"]))
+de_tweets['tokenized_no_sw']=np.zeros(len(de_tweets["pota"]))
 
 en_tweets['tokenized_no_sw']=en_tweets['pota'].map(lambda x:[word for word in x if not word in en_stopwords])
 de_tweets['tokenized_no_sw']=de_tweets['pota'].map(lambda x:[word for word in x if not word in de_stopwords])
-
-## missing NER, remove punctation 
 
 #for s in en_tweets["id"]:
 #    en_tweets['tokenized_no_sw'][s]=[word for word in en_tweets['pota'][s] if not word in en_stopwords]
@@ -145,22 +137,32 @@ with open('crosslingual_EN-DE_german_twitter_100d_weighted_modified.txt',encodin
         #print(word)
         #print(i)
 
+# New column for tokens w/o entities
+de_tweets["tokenized_no_sw_and_entities"] = np.zeros(len(de_tweets["tokenized_no_sw"]))
+
+# Since the indices are differenent for the dataset (result of them being dissections of one df)
+for i in de_tweets.index:
+    de_tweets["tokenized_no_sw_and_entities"][i] = remove_entities(de_tweets["tweet"][i], de_tweets["tokenized_no_sw"][i].copy())
+
 # de_emb_dict["altersgeschützt"] 100-d vector
 
 len(vocab_de) != len(np.unique(vocab_de)) # why?
 
+de_tweets["tokenized_no_sw"] = de_tweets["tokenized_no_sw_and_entities"]
+
 # concatenate tokens and match unique tokens (i.e. vocabulary) with the emb words 
 de_tweets['tokenized_no_sw'] = de_tweets['tokenized_no_sw'].apply(lambda x: np.array(x))
 de_tweet_vocab = np.concatenate(de_tweets['tokenized_no_sw'].values)
-de_tweet_vocab = list(np.unique(de_tweet_vocab))
+de_tweet_vocab = list(np.unique(de_tweet_vocab)) # 2123 with NER vs 3252 without NER
 
 tokens_in_vocab = []
 for word in de_tweet_vocab:
     tokens_in_vocab.append(word in vocab_de)
 
-np.mean(tokens_in_vocab) # 88% of unique tokens from the german tweets seem to be in the german embedding
+np.mean(tokens_in_vocab) 
 
-
+# w/o NER: 88% of unique tokens from the german tweets seem to be in the german embedding
+# with NER: 88% of unique tokens from the german tweets seem to be in the german embedding
 
 # %%
 
@@ -179,19 +181,23 @@ for line in en_embeddings:
     vector = np.asarray(values[1:], dtype='float32')
     en_emb_dict[word] = vector
     i=i+1
-    print(word)
-    print(i)
+    #print(word)
+    #print(i)
 
 en_embeddings.close()
 
-
-
 # %%
-
 
 # de_emb_dict["altersgeschützt"] 100-d vector
 
+# NER
+en_tweets["tokenized_no_sw_and_entities"] = np.zeros(len(en_tweets["tokenized_no_sw"]))
+for i in en_tweets.index:
+    en_tweets["tokenized_no_sw_and_entities"][i] = remove_entities(en_tweets["tweet"][i], en_tweets["tokenized_no_sw"][i].copy())
+
 len(vocab_en) != len(np.unique(vocab_en)) # why?
+
+en_tweets["tokenized_no_sw"] = en_tweets["tokenized_no_sw_and_entities"]
 
 # concatenate tokens and match unique tokens (i.e. vocabulary) with the emb words 
 en_tweets['tokenized_no_sw'] = en_tweets['tokenized_no_sw'].apply(lambda x: np.array(x))
@@ -205,11 +211,10 @@ for word in en_tweet_vocab:
     is_in = word in vocab_en
     tokens_in_en_vocab.append(is_in)
     if (is_in): tokens_in.append(word)
-    if (not is_in): tokens_not_in.append(word)
+    if (not is_in): tokens_not_in.append(word) # 650 "not in" with NER vs 741 "not in" without NER
 
 np.mean(tokens_in_en_vocab) # 87% of unique tokens from the german tweets seem to be in the german embedding
 k = np.where(np.array(tokens_in_en_vocab) == False)[0]
-en_embeddings.close()
 
 #Another common trick, particularly when working with word embedding based solutions  
 #is to replace the word with a nearby word from some form of synonym dictionary. Example : 
