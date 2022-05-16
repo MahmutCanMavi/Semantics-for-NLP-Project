@@ -276,8 +276,8 @@ abs_freq = sorted(abs_freq.items(), key=lambda x: x[1])
 
 # search for a generic time to replace <time>
 res =  ["pm" in word for word  in en_emb_vocab]
-res = np.array(en_emb_vocab)[np.where(res)[0]] # maybe use "12pm" as a generic time for all <time> tokens
+res = np.array(en_emb_vocab)[np.where(res)[0]] # maybe use "12pm" as a generic for all <time> tokens
 
 # search for a generic name to replace <user>
 res = ["meggan" in word for word in en_emb_vocab]
-res = np.array(en_emb_vocab)[np.where(res)[0]] # maybe use "meggan" as a generic time for all <user> tokens
+res = np.array(en_emb_vocab)[np.where(res)[0]] # maybe use "meggan" as a generic for all <user> tokens
