@@ -85,14 +85,36 @@ de_tweets['tokenized_no_sw']=de_tweets['tokenized'].map(lambda x:[word for word 
 
 ### apply named entity recognition
 
-# use converters to get list instead of string for pandas column
+# already done with commented code, use converters to get list instead of string for pandas column
 de_tweets = pd.read_csv("de_tweets.csv", converters={'preproc': pd.eval, 'tokenized_no_sw': pd.eval})
 en_tweets = pd.read_csv("en_tweets.csv", converters={'preproc': pd.eval, 'tokenized_no_sw': pd.eval})
 
-# position 511 is empty for some reason...
+# after ner: some tweets are empty for some reason...
 de_tweets["preproc"].iloc[511] = de_tweets["tokenized_no_sw"].iloc[511]
+en_tweets["preproc"].iloc[1959] = en_tweets["tokenized_no_sw"].iloc[1959]
+en_tweets["preproc"].iloc[2035] = en_tweets["tokenized_no_sw"].iloc[2035]
+en_tweets["preproc"].iloc[2041] = en_tweets["tokenized_no_sw"].iloc[2041]
 
-# to check the effect of NER
+## DISCUSS: replace the following token by some vector that is available and matches the content
+for idx in range(de_tweets['preproc'].shape[0]):
+
+    de_tweets['preproc'].iloc[idx] = [tok.replace('<user>','anna') for tok in de_tweets['preproc'].iloc[idx]]
+    de_tweets['preproc'].iloc[idx] = [tok.replace('<percent>','anteil') for tok in de_tweets['preproc'].iloc[idx]]
+    de_tweets['preproc'].iloc[idx] = [tok.replace('<number>','101') for tok in de_tweets['preproc'].iloc[idx]]
+    de_tweets['preproc'].iloc[idx] = [tok.replace('<money>','geld') for tok in de_tweets['preproc'].iloc[idx]]
+    de_tweets['preproc'].iloc[idx] = [tok.replace('<date>','29th') for tok in de_tweets['preproc'].iloc[idx]]
+    de_tweets['preproc'].iloc[idx] = [tok.replace('<time>','29:31:00') for tok in de_tweets['preproc'].iloc[idx]]
+
+for idx in range(en_tweets['preproc'].shape[0]):
+
+    en_tweets['preproc'].iloc[idx] = [tok.replace('<user>','meggan') for tok in en_tweets['preproc'].iloc[idx]]
+    en_tweets['preproc'].iloc[idx] = [tok.replace('<percent>','share') for tok in en_tweets['preproc'].iloc[idx]]
+    en_tweets['preproc'].iloc[idx] = [tok.replace('<number>','43.5') for tok in en_tweets['preproc'].iloc[idx]]
+    en_tweets['preproc'].iloc[idx] = [tok.replace('<money>','money') for tok in en_tweets['preproc'].iloc[idx]]
+    en_tweets['preproc'].iloc[idx] = [tok.replace('<date>','2022') for tok in en_tweets['preproc'].iloc[idx]]
+    en_tweets['preproc'].iloc[idx] = [tok.replace('<time>','12pm') for tok in en_tweets['preproc'].iloc[idx]]
+
+# to check the effect without NER
 #de_tweets["preproc"] = de_tweets["tokenized_no_sw"]
 #en_tweets["preproc"] = en_tweets["tokenized_no_sw"]
 
@@ -133,24 +155,26 @@ with open('crosslingual_EN-DE_german_twitter_100d_weighted_modified.txt', encodi
         de_emb_vocab.append(word)
 
 # they should be the same shouldnt they?
-len(de_emb_vocab) == len(np.unique(de_emb_vocab))
+#len(de_emb_vocab) == len(np.unique(de_emb_vocab))
 
 # concatenate tokens and match unique tokens from corpus with the emb vocab
 de_tweets['preproc'] = de_tweets['preproc'].apply(lambda x: np.array(x))
 de_tweet_corp_all = np.concatenate(de_tweets['preproc'].values)
 de_tweet_corp = list(np.unique(de_tweet_corp_all))
+len(de_tweet_corp_all) # 45123
+len(np.unique(de_tweet_corp_all)) # 6837
 
 # check which tokens have a emb vector available 
+#np.mean([emb_token in de_emb_vocab for emb_token in de_tweet_corp_all]) # non-unique: 0.77
+
 tokens_in_de_emb = []
 tokens_in_de = []
 tokens_not_in_de = []
 for token in de_tweet_corp:
     is_in = token in de_emb_vocab
-    tokens_in_de_emb.append(is_in)
+    tokens_in_de_emb.append(is_in) #np.mean(tokens_in_de_emb)
     if (is_in): tokens_in_de.append(token)
     if (not is_in): tokens_not_in_de.append(token)
-
-np.mean(tokens_in_de_emb)
 
 ## replace out-of-vocab tokens with synonyms to alleviate oov problem
 # https://medium.com/cisco-emerge/creating-semantic-representations-of-out-of-vocabulary-words-for-common-nlp-tasks-842dbdafba18
@@ -197,14 +221,18 @@ with open('crosslingual_EN-DE_english_twitter_100d_weighted_modified.txt', encod
         en_emb_vocab.append(word)
 
 # they should be the same shouldnt they?
-len(en_emb_vocab) == len(np.unique(en_emb_vocab))
+#len(en_emb_vocab) == len(np.unique(en_emb_vocab))
 
 # concatenate tokens and match unique tokens from corpus with the emb vocab
 en_tweets['preproc'] = en_tweets['preproc'].apply(lambda x: np.array(x))
 en_tweet_corp_all = np.concatenate(en_tweets['preproc'].values)
 en_tweet_corp = list(np.unique(en_tweet_corp_all))
+len(en_tweet_corp_all) # 175315
+len(np.unique(en_tweet_corp_all)) # 12830
 
 # check which tokens have a emb vector available 
+#np.mean([emb_token in en_emb_vocab for emb_token in en_tweet_corp_all]) # non-unique: 0.78
+
 tokens_in_en_vocab = []
 tokens_in_en = []
 tokens_not_in_en = []
@@ -214,7 +242,7 @@ for token in en_tweet_corp:
     if (is_in): tokens_in_en.append(token)
     if (not is_in): tokens_not_in_en.append(token)
 
-np.mean(tokens_in_en_vocab)
+#np.mean(tokens_in_en_vocab)
 
 ## replace out-of-vocab tokens with synonyms to alleviate oov problem
 
@@ -252,6 +280,7 @@ add_from_en = list(np.asarray(en_emb_vocab, dtype=object)[np.where(de_tok)[0]])
 tokens_in_de = tokens_in_de + add_from_en
 len(tokens_in_de)/len(de_tweet_corp)
 de_oov = set(de_tweet_corp) - set(tokens_in_de) # german oov words
+np.mean([emb_token in tokens_in_de for emb_token in de_tweet_corp_all]) 
 
 # frequency of how many times each token is missing in the corpus
 abs_freq = {}
@@ -265,19 +294,10 @@ add_from_de = list(np.asarray(de_emb_vocab, dtype=object)[np.where(en_tok)[0]])
 tokens_in_en = tokens_in_en + add_from_de
 len(tokens_in_en)/len(en_tweet_corp)
 en_oov = set(en_tweet_corp) - set(tokens_in_en) # english oov words
+np.mean([emb_token in tokens_in_en for emb_token in en_tweet_corp_all]) 
 
 # frequency of how many times each token is missing in the corpus
 abs_freq = {}
 for tok in en_oov:
     abs_freq[tok] = np.sum(en_tweet_corp_all == tok)
 abs_freq = sorted(abs_freq.items(), key=lambda x: x[1])
-
-### replace oov tokens with proper vectors from the vocab
-
-# search for a generic time to replace <time>
-res =  ["pm" in word for word  in en_emb_vocab]
-res = np.array(en_emb_vocab)[np.where(res)[0]] # maybe use "12pm" as a generic for all <time> tokens
-
-# search for a generic name to replace <user>
-res = ["meggan" in word for word in en_emb_vocab]
-res = np.array(en_emb_vocab)[np.where(res)[0]] # maybe use "meggan" as a generic for all <user> tokens
