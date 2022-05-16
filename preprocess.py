@@ -93,8 +93,8 @@ en_tweets = pd.read_csv("en_tweets.csv", converters={'preproc': pd.eval, 'tokeni
 de_tweets["preproc"].iloc[511] = de_tweets["tokenized_no_sw"].iloc[511]
 
 # to check the effect of NER
-de_tweets["preproc"] = de_tweets["tokenized_no_sw"]
-en_tweets["preproc"] = en_tweets["tokenized_no_sw"]
+#de_tweets["preproc"] = de_tweets["tokenized_no_sw"]
+#en_tweets["preproc"] = en_tweets["tokenized_no_sw"]
 
 # ## german
 # de_tweets["tokenized_no_sw_and_entities"] = np.zeros(len(de_tweets["tokenized_no_sw"]))
@@ -137,8 +137,8 @@ len(de_emb_vocab) == len(np.unique(de_emb_vocab))
 
 # concatenate tokens and match unique tokens from corpus with the emb vocab
 de_tweets['preproc'] = de_tweets['preproc'].apply(lambda x: np.array(x))
-de_tweet_corp = np.concatenate(de_tweets['preproc'].values)
-de_tweet_corp = list(np.unique(de_tweet_corp))
+de_tweet_corp_all = np.concatenate(de_tweets['preproc'].values)
+de_tweet_corp = list(np.unique(de_tweet_corp_all))
 
 # check which tokens have a emb vector available 
 tokens_in_de_emb = []
@@ -168,9 +168,11 @@ for tok in tokens_not_in_de:
     else:
         for sys in synset:
             synonym = sys._name[0:len(sys._name)-5]
-            has_synonym = any([synonym in de_emb_vocab])
-            if (has_synonym): de_synonyms[tok] = synonym
+            has_synonym = synonym in de_emb_vocab
             de_has_synonyms.append(has_synonym)
+            if (has_synonym): 
+                de_synonyms[tok] = synonym
+                break # sometimes there are multiple synonyms
 
 (de_unique, de_counts) = np.unique(de_has_synonyms, return_counts = True)
 
@@ -180,7 +182,7 @@ for idx in range(de_tweets['preproc'].shape[0]):
         true_false = de_tweets['preproc'].iloc[idx] == key
         de_tweets['preproc'].iloc[idx][true_false] = value
 
-tokens_in_de = tokens_in_de + list(de_synonyms.values())
+tokens_in_de = tokens_in_de + list(de_synonyms.keys())
 
 ## english
 
@@ -199,8 +201,8 @@ len(en_emb_vocab) == len(np.unique(en_emb_vocab))
 
 # concatenate tokens and match unique tokens from corpus with the emb vocab
 en_tweets['preproc'] = en_tweets['preproc'].apply(lambda x: np.array(x))
-en_tweet_corp = np.concatenate(en_tweets['preproc'].values)
-en_tweet_corp = list(np.unique(en_tweet_corp))
+en_tweet_corp_all = np.concatenate(en_tweets['preproc'].values)
+en_tweet_corp = list(np.unique(en_tweet_corp_all))
 
 # check which tokens have a emb vector available 
 tokens_in_en_vocab = []
@@ -216,20 +218,20 @@ np.mean(tokens_in_en_vocab)
 
 ## replace out-of-vocab tokens with synonyms to alleviate oov problem
 
-# match german words in english embedding
-
 en_has_synonyms = []
 en_synonyms = {}
 for tok in tokens_not_in_en:
-    synset = wordnet.synsets(tok) # english wordnet
+    synset = wordnet.synsets(tok) # english wordnet unfortunately
     if (len(synset) == 0): 
         en_has_synonyms.append("missing")
     else:
         for sys in synset:
             synonym = sys._name[0:len(sys._name)-5]
-            has_synonym = any([synonym in de_emb_vocab])
-            if (has_synonym): en_synonyms[tok] = synonym
+            has_synonym = synonym in en_emb_vocab
             en_has_synonyms.append(has_synonym)
+            if (has_synonym): 
+                en_synonyms[tok] = synonym
+                break # sometimes there are multiple synonyms
 
 (en_unique, en_counts) = np.unique(en_has_synonyms, return_counts = True)
 
@@ -239,7 +241,8 @@ for idx in range(en_tweets['preproc'].shape[0]):
         true_false = en_tweets['preproc'].iloc[idx] == key
         en_tweets['preproc'].iloc[idx][true_false] = value
 
-tokens_in_en = tokens_in_en + list(en_synonyms.values())
+# although they are not in the main vocab we can substitute them by synonyms and thus count them in
+tokens_in_en = tokens_in_en + list(en_synonyms.keys())
 
 ## one further way to alleviate oov problem
 
@@ -248,11 +251,33 @@ de_tok = [tok in en_emb_vocab for tok in tokens_not_in_de]
 add_from_en = list(np.asarray(en_emb_vocab, dtype=object)[np.where(de_tok)[0]])
 tokens_in_de = tokens_in_de + add_from_en
 len(tokens_in_de)/len(de_tweet_corp)
-set(de_tweet_corp) - set(tokens_in_de) # german oov words
+de_oov = set(de_tweet_corp) - set(tokens_in_de) # german oov words
+
+# frequency of how many times each token is missing in the corpus
+abs_freq = {}
+for tok in de_oov:
+    abs_freq[tok] = np.sum(de_tweet_corp_all == tok)
+abs_freq = sorted(abs_freq.items(), key=lambda x: x[1])
 
 # noticed that some german words where in the english tweets, match with german vocab
 en_tok = [tok in de_emb_vocab for tok in tokens_not_in_en]
 add_from_de = list(np.asarray(de_emb_vocab, dtype=object)[np.where(en_tok)[0]])
 tokens_in_en = tokens_in_en + add_from_de
 len(tokens_in_en)/len(en_tweet_corp)
-set(en_tweet_corp) - set(tokens_in_en) # english oov words
+en_oov = set(en_tweet_corp) - set(tokens_in_en) # english oov words
+
+# frequency of how many times each token is missing in the corpus
+abs_freq = {}
+for tok in en_oov:
+    abs_freq[tok] = np.sum(en_tweet_corp_all == tok)
+abs_freq = sorted(abs_freq.items(), key=lambda x: x[1])
+
+### replace oov tokens with proper vectors from the vocab
+
+# search for a generic time to replace <time>
+res =  ["pm" in word for word  in en_emb_vocab]
+res = np.array(en_emb_vocab)[np.where(res)[0]] # maybe use "12pm" as a generic time for all <time> tokens
+
+# search for a generic name to replace <user>
+res = ["meggan" in word for word in en_emb_vocab]
+res = np.array(en_emb_vocab)[np.where(res)[0]] # maybe use "meggan" as a generic time for all <user> tokens
