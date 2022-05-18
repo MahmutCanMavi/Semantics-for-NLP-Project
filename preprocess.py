@@ -98,21 +98,21 @@ en_tweets["preproc"].iloc[2041] = en_tweets["tokenized_no_sw"].iloc[2041]
 ## DISCUSS: replace the following token by some vector that is available and matches the content
 for idx in range(de_tweets['preproc'].shape[0]):
 
-    de_tweets['preproc'].iloc[idx] = [tok.replace('<user>','anna') for tok in de_tweets['preproc'].iloc[idx]]
+    de_tweets['preproc'].iloc[idx] = [tok.replace('<user>','paula') for tok in de_tweets['preproc'].iloc[idx]]
     de_tweets['preproc'].iloc[idx] = [tok.replace('<percent>','anteil') for tok in de_tweets['preproc'].iloc[idx]]
-    de_tweets['preproc'].iloc[idx] = [tok.replace('<number>','101') for tok in de_tweets['preproc'].iloc[idx]]
+    de_tweets['preproc'].iloc[idx] = [tok.replace('<number>','192') for tok in de_tweets['preproc'].iloc[idx]]
     de_tweets['preproc'].iloc[idx] = [tok.replace('<money>','geld') for tok in de_tweets['preproc'].iloc[idx]]
-    de_tweets['preproc'].iloc[idx] = [tok.replace('<date>','29th') for tok in de_tweets['preproc'].iloc[idx]]
-    de_tweets['preproc'].iloc[idx] = [tok.replace('<time>','29:31:00') for tok in de_tweets['preproc'].iloc[idx]]
+    de_tweets['preproc'].iloc[idx] = [tok.replace('<date>','september') for tok in de_tweets['preproc'].iloc[idx]]
+    de_tweets['preproc'].iloc[idx] = [tok.replace('<time>','10:16') for tok in de_tweets['preproc'].iloc[idx]]
 
 for idx in range(en_tweets['preproc'].shape[0]):
 
-    en_tweets['preproc'].iloc[idx] = [tok.replace('<user>','meggan') for tok in en_tweets['preproc'].iloc[idx]]
-    en_tweets['preproc'].iloc[idx] = [tok.replace('<percent>','share') for tok in en_tweets['preproc'].iloc[idx]]
-    en_tweets['preproc'].iloc[idx] = [tok.replace('<number>','43.5') for tok in en_tweets['preproc'].iloc[idx]]
+    en_tweets['preproc'].iloc[idx] = [tok.replace('<user>','paula') for tok in en_tweets['preproc'].iloc[idx]]
+    en_tweets['preproc'].iloc[idx] = [tok.replace('<percent>','fraction') for tok in en_tweets['preproc'].iloc[idx]]
+    en_tweets['preproc'].iloc[idx] = [tok.replace('<number>','192') for tok in en_tweets['preproc'].iloc[idx]]
     en_tweets['preproc'].iloc[idx] = [tok.replace('<money>','money') for tok in en_tweets['preproc'].iloc[idx]]
-    en_tweets['preproc'].iloc[idx] = [tok.replace('<date>','2022') for tok in en_tweets['preproc'].iloc[idx]]
-    en_tweets['preproc'].iloc[idx] = [tok.replace('<time>','12pm') for tok in en_tweets['preproc'].iloc[idx]]
+    en_tweets['preproc'].iloc[idx] = [tok.replace('<date>','september') for tok in en_tweets['preproc'].iloc[idx]]
+    en_tweets['preproc'].iloc[idx] = [tok.replace('<time>','10:16') for tok in en_tweets['preproc'].iloc[idx]]
 
 # to check the effect without NER
 #de_tweets["preproc"] = de_tweets["tokenized_no_sw"]
