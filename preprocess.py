@@ -19,9 +19,20 @@ annotated_tweets = annotated_tweets.drop("Unnamed: 0.1", axis=1)
 all_tweets = pd.read_csv("tweet_samp_060522.csv")
 all_tweets = all_tweets.drop("Unnamed: 0", axis=1)
 
-cols = all_tweets.columns.tolist()
-d = pd.merge(all_tweets, annotated_tweets,  how='left', on=cols)
+all_tweets["annotate_sent"]=np.nan
+all_tweets["annotate_person"]=np.nan
+
+for i in range(annotated_tweets.shape[0]):
+    idx=all_tweets.index[all_tweets["tweet_id"]==annotated_tweets["tweet_id"].iloc[i]]
+    all_tweets["annotate_sent"][idx]=annotated_tweets["annotate_sent"].iloc[i]
+    all_tweets["annotate_person"][idx]=annotated_tweets["annotate_person"].iloc[i]
+
+d=all_tweets
+#cols = all_tweets.columns.tolist()
+#d = pd.merge(all_tweets, annotated_tweets,  how='outer', on=cols)
 d = d[d['lang'] != 'tl'] # one entry has wrong langauge
+len(np.where(~np.isnan(d["annotate_sent"]))[0])
+d.shape[0]
 
 d['tweet'] = d['tweet'].astype('str') # maybe try astype('unicode') and see if out-of-vocab/performance is affected
 d['lowercase'] = d['tweet'].map(lambda x: x.lower()) # is NER affected by capitalization?
@@ -55,7 +66,7 @@ text_processor = TextPreProcessor(
     
     # select a tokenizer. You can use SocialTokenizer, or pass your own
     # the tokenizer, should take as input a string and return a list of tokens
-    tokenizer=SocialTokenizer(lowercase=True).tokenize,
+    #tokenizer=SocialTokenizer(lowercase=True).tokenize,
     
     # list of dictionaries, for replacing tokens extracted from the text,
     # with other expressions. You can pass more than one dictionaries.
@@ -65,7 +76,7 @@ text_processor = TextPreProcessor(
 d['tokenized'] = d['lowercase'].map(text_processor.pre_process_doc)
 
 # For vader classifier comment out "tokenizer=SocialTokenizer()"
-#d.to_pickle("preprocess_vader.pkl")
+d.to_pickle("preprocess_vader_test.pkl")
 
 # separate english and german tweets
 en_tweets = d[d['lang']=='en'] # 6858/8760 = 0.78

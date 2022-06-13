@@ -9,7 +9,7 @@ from sklearn.metrics import f1_score
 from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 
-df = pd.read_pickle("preprocess_vader.pkl")
+df = pd.read_pickle("preprocess_vader_test.pkl")
 index_annotated = np.where(~np.isnan(df["annotate_sent"]))[0]
 
 np.random.seed(1)
