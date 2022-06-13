@@ -9,7 +9,7 @@ from sklearn.metrics import f1_score
 from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 
-df = pd.read_pickle("preprocess_vader_test.pkl")
+df = pd.read_pickle("preprocess_vader.pkl")
 index_annotated = np.where(~np.isnan(df["annotate_sent"]))[0]
 
 np.random.seed(1)
@@ -32,17 +32,17 @@ df_validation["predicted"].iloc[np.where(vader_scores["compound"] > .5)[0]] = 1
 
 # arithmetic mean of our per-class F1-scores:
 #df_validation["predicted"] = np.random.choice(np.array([-1,0,1]), size = 311, replace= True)
-np.round(f1_score(df_validation["annotate_sent"], df_validation["predicted"], average = "macro"), decimals=3)
-np.round(f1_score(df_validation["annotate_sent"], df_validation["predicted"], average = "weighted"), decimals=3) 
-np.round(f1_score(df_validation["annotate_sent"], df_validation["predicted"], average = "micro"), decimals=3)
+np.round(f1_score(df_validation["annotate_sent"], df_validation["predicted"], average = "macro"), decimals=3) #0.047,0.406
+np.round(f1_score(df_validation["annotate_sent"], df_validation["predicted"], average = "weighted"), decimals=3) #0.477,0.48
+np.round(f1_score(df_validation["annotate_sent"], df_validation["predicted"], average = "micro"), decimals=3) #.0479,0.482
 
-np.round(precision_score(df_validation["annotate_sent"], df_validation["predicted"], average = "macro"), decimals=3)
-np.round(precision_score(df_validation["annotate_sent"], df_validation["predicted"], average = "weighted"), decimals=3)
-np.round(precision_score(df_validation["annotate_sent"], df_validation["predicted"], average = "micro"), decimals=3)
+np.round(precision_score(df_validation["annotate_sent"], df_validation["predicted"], average = "macro"), decimals=3) #0.409 , 0.409
+np.round(precision_score(df_validation["annotate_sent"], df_validation["predicted"], average = "weighted"), decimals=3) #0.476, 0.477
+np.round(precision_score(df_validation["annotate_sent"], df_validation["predicted"], average = "micro"), decimals=3) #0.479, 0.482
 
-np.round(recall_score(df_validation["annotate_sent"], df_validation["predicted"], average = "macro"), decimals=3)
-np.round(recall_score(df_validation["annotate_sent"], df_validation["predicted"], average = "weighted"), decimals=3)
-np.round(recall_score(df_validation["annotate_sent"], df_validation["predicted"], average = "micro"), decimals=3)
+np.round(recall_score(df_validation["annotate_sent"], df_validation["predicted"], average = "macro"), decimals=3) #0.405, 0.404
+np.round(recall_score(df_validation["annotate_sent"], df_validation["predicted"], average = "weighted"), decimals=3) #0.479, 0.482
+np.round(recall_score(df_validation["annotate_sent"], df_validation["predicted"], average = "micro"), decimals=3) #0.479, 0.482
 
 
 print(vader_scores)
