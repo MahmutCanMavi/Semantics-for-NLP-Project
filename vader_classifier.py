@@ -135,7 +135,7 @@ for i in range(iter):
 
 
     #####NO HASHTAGS DATASET
-    np.random.seed(i)
+    np.random.seed(i+1)   #Setting "independence" between datasets
     sample=pd.Series(np.random.choice(df_validation_no_hashtags["tokenized"],size=size_sample,replace=True)) #bootstraping
 
     #Running VADER
@@ -160,25 +160,25 @@ for i in range(iter):
 
 
 # %%
-t_stat_f1_macro,pvalue_f1_macro=ttest_ind(f1_macro_unpacked, f1_macro_no_hashtags,alternative="less")
+t_stat_f1_macro,pvalue_f1_macro=ttest_ind(f1_macro_unpacked, f1_macro_no_hashtags,alternative="less",equal_var=False)
 print(pvalue_f1_macro)
-t_stat_f1_weighted,pvalue_f1_weighted=ttest_ind(f1_weighted_unpacked, f1_weighted_no_hashtags,alternative="less")
+t_stat_f1_weighted,pvalue_f1_weighted=ttest_ind(f1_weighted_unpacked, f1_weighted_no_hashtags,alternative="less",equal_var=False)
 print(pvalue_f1_weighted)
-t_stat_f1_micro,pvalue_f1_micro=ttest_ind(f1_micro_unpacked, f1_micro_no_hashtags,alternative="less")
+t_stat_f1_micro,pvalue_f1_micro=ttest_ind(f1_micro_unpacked, f1_micro_no_hashtags,alternative="less",equal_var=False)
 print(pvalue_f1_micro)
 
-t_stat_prec_macro,pvalue_prec_macro=ttest_ind(prec_macro_unpacked, prec_macro_no_hashtags,alternative="less")
+t_stat_prec_macro,pvalue_prec_macro=ttest_ind(prec_macro_unpacked, prec_macro_no_hashtags,alternative="less",equal_var=False)
 print(pvalue_prec_macro)
-t_stat_prec_weighted,pvalue_prec_weighted=ttest_ind(prec_weighted_unpacked, prec_weighted_no_hashtags,alternative="less")
+t_stat_prec_weighted,pvalue_prec_weighted=ttest_ind(prec_weighted_unpacked, prec_weighted_no_hashtags,alternative="less",equal_var=False)
 print(pvalue_prec_weighted)
-t_stat_prec_micro,pvalue_prec_micro=ttest_ind(prec_micro_unpacked, prec_micro_no_hashtags,alternative="less")
+t_stat_prec_micro,pvalue_prec_micro=ttest_ind(prec_micro_unpacked, prec_micro_no_hashtags,alternative="less",equal_var=False)
 print(pvalue_prec_micro)
 
-t_stat_rec_macro,pvalue_rec_macro=ttest_ind(rec_macro_unpacked, rec_macro_no_hashtags,alternative="less")
+t_stat_rec_macro,pvalue_rec_macro=ttest_ind(rec_macro_unpacked, rec_macro_no_hashtags,alternative="less",equal_var=False)
 print(pvalue_rec_macro)
-t_stat_rec_weighted,pvalue_rec_weighted=ttest_ind(rec_weighted_unpacked, rec_weighted_no_hashtags,alternative="less")
+t_stat_rec_weighted,pvalue_rec_weighted=ttest_ind(rec_weighted_unpacked, rec_weighted_no_hashtags,alternative="less",equal_var=False)
 print(pvalue_rec_weighted)
-t_stat_rec_micro,pvalue_rec_micro=ttest_ind(rec_micro_unpacked, rec_micro_no_hashtags,alternative="less")
+t_stat_rec_micro,pvalue_rec_micro=ttest_ind(rec_micro_unpacked, rec_micro_no_hashtags,alternative="less",equal_var=False)
 print(pvalue_rec_micro)
 
-# %%
+
