@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import nltk  # nltk-3.7
+nltk.download('omw-1.4')
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 nltk.download('wordnet')
@@ -9,6 +10,7 @@ from ekphrasis.classes.preprocessor import TextPreProcessor
 from ekphrasis.classes.tokenizer import SocialTokenizer
 from ekphrasis.dicts.emoticons import emoticons
 from ner import remove_entities # see ner.py
+
 
 ## Merge annotated data set (1500 tweets) with the full one-year sample (8761 tweets)
 
@@ -31,6 +33,8 @@ d=all_tweets
 #cols = all_tweets.columns.tolist()
 #d = pd.merge(all_tweets, annotated_tweets,  how='outer', on=cols)
 d = d[d['lang'] != 'tl'] # one entry has wrong langauge
+d.index=range(d.shape[0])
+
 len(np.where(~np.isnan(d["annotate_sent"]))[0])
 d.shape[0]
 
@@ -59,7 +63,7 @@ text_processor = TextPreProcessor(
     # for spell correction
     corrector="twitter", 
     
-    unpack_hashtags=True,  # perform word segmentation on hashtags. #IS IT GOOD IDEA TO KEEP? 
+    unpack_hashtags=False,  # perform word segmentation on hashtags. #IS IT GOOD IDEA TO KEEP? 
     unpack_contractions=False,  # Unpack contractions (can't -> can not). WORD EMBEDDINGS INCLUDE CONTRACTIONS
     spell_correct_elong=False,  # spell correction for elongated words. I'M THINKING IT MIGHT CAUSE TROUBLE WHEN SEVERAL LANGUAGES
                                 #DONT THINK THERE WILL BE MANY ELONGATED WORDS IN ECONOMIC TWEETS
@@ -75,8 +79,16 @@ text_processor = TextPreProcessor(
 
 d['tokenized'] = d['lowercase'].map(text_processor.pre_process_doc)
 
-# For vader classifier comment out "tokenizer=SocialTokenizer()"
-d.to_pickle("preprocess_vader_test.pkl")
+
+''' For vader classifier comment out "tokenizer=SocialTokenizer()"
+For option where hashtags are completely removed, also set unpack_hashtags as False
+and uncomment the following lines:
+'''
+
+for i in range(len(d['tokenized'])):
+    d['tokenized'][i]=' '.join(filter(lambda x:x[0]!='#',d['tokenized'][i].split()))
+
+d.to_pickle("preprocess_vader_no_hashtags.pkl")
 
 # separate english and german tweets
 en_tweets = d[d['lang']=='en'] # 6858/8760 = 0.78
@@ -125,6 +137,9 @@ for idx in range(en_tweets['preproc'].shape[0]):
     en_tweets['preproc'].iloc[idx] = [tok.replace('<date>','september') for tok in en_tweets['preproc'].iloc[idx]]
     en_tweets['preproc'].iloc[idx] = [tok.replace('<time>','10:16') for tok in en_tweets['preproc'].iloc[idx]]
 
+de_tweets.to_csv("de_tweets2.csv", index=False)
+en_tweets.to_csv("en_tweets2.csv", index=False)
+
 # to check the effect without NER
 #de_tweets["preproc"] = de_tweets["tokenized_no_sw"]
 #en_tweets["preproc"] = en_tweets["tokenized_no_sw"]
@@ -155,7 +170,10 @@ for idx in range(en_tweets['preproc'].shape[0]):
 
 ## german
 
-with open('crosslingual_EN-DE_german_twitter_100d_weighted_modified.txt', encoding="Latin-1") as de_embeddings:
+de_tweets = pd.read_csv("de_tweets2.csv", converters={'preproc': pd.eval, 'tokenized_no_sw': pd.eval})
+en_tweets = pd.read_csv("en_tweets2.csv", converters={'preproc': pd.eval, 'tokenized_no_sw': pd.eval})
+
+with open('multilingual_fasttext_de.txt', encoding="Latin-1") as de_embeddings:
     de_emb_dict={}
     de_emb_vocab = []
     for i, line in enumerate(de_embeddings):
@@ -218,10 +236,11 @@ for idx in range(de_tweets['preproc'].shape[0]):
         de_tweets['preproc'].iloc[idx][true_false] = value
 
 tokens_in_de = tokens_in_de + list(de_synonyms.keys())
+de_tweets.to_csv("de_tweets_synonyms_fasttext.csv", index=False)
 
 ## english
 
-with open('crosslingual_EN-DE_english_twitter_100d_weighted_modified.txt', encoding="Latin-1") as en_embeddings:
+with open('multilingual_fasttext_en.txt', encoding="Latin-1") as en_embeddings:
     en_emb_dict={}
     en_emb_vocab = []
     for i, line in enumerate(en_embeddings):
@@ -239,7 +258,7 @@ en_tweets['preproc'] = en_tweets['preproc'].apply(lambda x: np.array(x))
 en_tweet_corp_all = np.concatenate(en_tweets['preproc'].values)
 en_tweet_corp = list(np.unique(en_tweet_corp_all))
 len(en_tweet_corp_all) # 175315
-len(np.unique(en_tweet_corp_all)) # 12830
+len(np.unique(en_tweet_corp_all)) # 12831
 
 # check which tokens have a emb vector available 
 #np.mean([emb_token in en_emb_vocab for emb_token in en_tweet_corp_all]) # non-unique: 0.78
@@ -282,6 +301,7 @@ for idx in range(en_tweets['preproc'].shape[0]):
 
 # although they are not in the main vocab we can substitute them by synonyms and thus count them in
 tokens_in_en = tokens_in_en + list(en_synonyms.keys())
+en_tweets.to_csv("en_tweets_synonyms_fasttext.csv", index=False)
 
 ## one further way to alleviate oov problem
 
@@ -289,9 +309,18 @@ tokens_in_en = tokens_in_en + list(en_synonyms.keys())
 de_tok = [tok in en_emb_vocab for tok in tokens_not_in_de]
 add_from_en = list(np.asarray(en_emb_vocab, dtype=object)[np.where(de_tok)[0]])
 tokens_in_de = tokens_in_de + add_from_en
-len(tokens_in_de)/len(de_tweet_corp)
+len(tokens_in_de)/len(de_tweet_corp)   # fasttext 0.7097, other 0.8644
 de_oov = set(de_tweet_corp) - set(tokens_in_de) # german oov words
-np.mean([emb_token in tokens_in_de for emb_token in de_tweet_corp_all]) 
+len(de_oov) #fasttext 2067, other 969
+np.mean([emb_token in tokens_in_de for emb_token in de_tweet_corp_all]) #fasttext 0.8065, other 0.8958
+
+for tok in add_from_en:
+    de_emb_dict[tok]=en_emb_dict[tok]
+
+
+with open('multilingual_fasttext_de_final.txt', 'w',encoding="utf-8") as f:
+    for key in de_emb_dict.keys():
+        f.write("%s %s\n" % (key, de_emb_dict[key]))
 
 # frequency of how many times each token is missing in the corpus
 abs_freq = {}
@@ -303,12 +332,20 @@ abs_freq = sorted(abs_freq.items(), key=lambda x: x[1])
 en_tok = [tok in de_emb_vocab for tok in tokens_not_in_en]
 add_from_de = list(np.asarray(de_emb_vocab, dtype=object)[np.where(en_tok)[0]])
 tokens_in_en = tokens_in_en + add_from_de
-len(tokens_in_en)/len(en_tweet_corp)
+len(tokens_in_en)/len(en_tweet_corp) #.86 fasttext, 0.8789 in other
 en_oov = set(en_tweet_corp) - set(tokens_in_en) # english oov words
-np.mean([emb_token in tokens_in_en for emb_token in en_tweet_corp_all]) 
+np.mean([emb_token in tokens_in_en for emb_token in en_tweet_corp_all]) #0.85 fasttext, #0.88 in other
 
 # frequency of how many times each token is missing in the corpus
 abs_freq = {}
 for tok in en_oov:
     abs_freq[tok] = np.sum(en_tweet_corp_all == tok)
 abs_freq = sorted(abs_freq.items(), key=lambda x: x[1])
+
+
+for tok in add_from_de:
+    en_emb_dict[tok]=de_emb_dict[tok]
+
+with open('multilingual_fasttext_en_final.txt', 'w',encoding="utf-8") as f:
+    for key in en_emb_dict.keys():
+        f.write("%s %s\n" % (key, en_emb_dict[key]))
