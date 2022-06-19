@@ -20,8 +20,9 @@ all_tweets = pd.read_csv("tweet_samp_060522.csv")
 all_tweets = all_tweets.drop("Unnamed: 0", axis=1)
 
 cols = all_tweets.columns.tolist()
-d = pd.merge(all_tweets, annotated_tweets,  how='left', on=cols)
+d = pd.merge(all_tweets, annotated_tweets,  how='outer', on=cols)
 d = d[d['lang'] != 'tl'] # one entry has wrong langauge
+d.index=range(d.shape[0])
 
 d['tweet'] = d['tweet'].astype('str') # maybe try astype('unicode') and see if out-of-vocab/performance is affected
 d['lowercase'] = d['tweet'].map(lambda x: x.lower()) # is NER affected by capitalization?
