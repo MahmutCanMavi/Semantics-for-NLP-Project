@@ -15,7 +15,7 @@ df = pd.read_pickle("preprocess_vader.pkl")
 index_annotated = np.where(~np.isnan(df["annotate_sent"]))[0]
 
 data = df.iloc[index_annotated,:]
-df_train, test = train_test_split(data, test_size=0.2, random_state=0)
+df_train, test = train_test_split(data, test_size=0.4, random_state=0)
 df_validation, df_test = train_test_split(test, test_size=0.5, random_state=0)
 #df_train.to_csv("data/train.csv", index = 0)
 #df_validation.to_csv("data/validation.csv", index = 0)
