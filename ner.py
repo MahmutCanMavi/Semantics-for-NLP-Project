@@ -8,7 +8,7 @@ def ner_simple(sentence: str):
     """
     return [(pair.text) for pair in en_core_web_sm.load()(sentence).ents]
 
-def split_mults(entities : list[str]):
+def split_mults(entities: list[str]):
     """
     Some entities consist of multiple words that I split
     """
