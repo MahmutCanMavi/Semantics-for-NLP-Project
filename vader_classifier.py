@@ -182,3 +182,50 @@ t_stat_rec_micro,pvalue_rec_micro=ttest_ind(rec_micro_unpacked, rec_micro_no_has
 print(pvalue_rec_micro)
 
 
+# %%
+# Alternative: dependent t-test for paired samples. In a paired sample t-test, each entity is measured twice, which results in pairs of observations (i.e. F1-scores) 
+# before (unpacked hashtags) and after the "treatment" (removed hashtags)
+# the independent test (ttest_ind) would assume that the two groups (unpacked hashtags and removed hashtags) are independent
+# also: changed from val_index to not_test_index to explore the full potential of the limited data set (remember: vader requires no training so we can use the training set here)
+# further: the resampled t-test violates the indepdence (between F1 scores in a group) assumption since it is sampling with replacement which induces dependence.
+
+from scipy.stats import ttest_rel
+
+df_validation_unpacked = df_unpacked.iloc[not_test_index,:]
+df_validation_no_hashtags = df_no_hashtags.iloc[not_test_index,:]
+
+folds = np.array_split(range(len(not_test_index)), 30) # non-random, non-overlappping, indepdendent
+f1_weighted_unpacked_folds = []
+f1_weighted_deleted_folds = []
+
+## unpacked
+
+unpacked_vader_scores = df_validation_unpacked["tokenized"].map(sid.polarity_scores)
+unpacked_vader_scores = pd.DataFrame(list(unpacked_vader_scores))
+
+df_validation_unpacked["predicted"] = 0
+df_validation_unpacked["predicted"].iloc[np.where(unpacked_vader_scores["compound"] < -.5)[0]] = -1 #can change to 0.33
+df_validation_unpacked["predicted"].iloc[np.where(unpacked_vader_scores["compound"] > .5)[0]] = 1
+
+for i in range(len(folds)):
+    f1_weighted_unpacked_folds.append(np.round(f1_score(df_validation_unpacked["annotate_sent"].iloc[folds[i],], \
+                                                        df_validation_unpacked["predicted"].iloc[folds[i],], average = "weighted"), decimals=3))
+
+## deleted
+
+deleted_vader_scores = df_validation_no_hashtags["tokenized"].map(sid.polarity_scores)
+deleted_vader_scores = pd.DataFrame(list(deleted_vader_scores))
+
+df_validation_no_hashtags["predicted"] = 0
+df_validation_no_hashtags["predicted"].iloc[np.where(deleted_vader_scores["compound"] < -.5)[0]] = -1 #can change to 0.33
+df_validation_no_hashtags["predicted"].iloc[np.where(deleted_vader_scores["compound"] > .5)[0]] = 1
+
+for i in range(len(folds)):
+    f1_weighted_deleted_folds.append(np.round(f1_score(df_validation_no_hashtags["annotate_sent"].iloc[folds[i],], \
+                                                       df_validation_no_hashtags["predicted"].iloc[folds[i],], average = "weighted"), decimals=3))
+
+t_stat_paired_f1_weighted, pvalue_paired_f1_weighted=ttest_rel(f1_weighted_unpacked_folds, f1_weighted_deleted_folds,alternative="two-sided")
+print(pvalue_paired_f1_weighted) # 0.207, can not reject the null that the paired difference between the samples is zero 
+
+np.round(np.mean(f1_weighted_unpacked_folds),3) # 0.483
+np.round(np.mean(f1_weighted_deleted_folds),3) # 0.478
