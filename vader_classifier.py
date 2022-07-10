@@ -187,7 +187,7 @@ print(pvalue_rec_micro)
 # before (unpacked hashtags) and after the "treatment" (removed hashtags)
 # the independent test (ttest_ind) would assume that the two groups (unpacked hashtags and removed hashtags) are independent
 # also: changed from val_index to not_test_index to explore the full potential of the limited data set (remember: vader requires no training so we can use the training set here)
-# further: the resampled t-test violates the indepdence (between F1 scores in a group) assumption since it is sampling with replacement which induces dependence.
+# further: a resampled t-test violates the indepdence (between F1 scores in a group) assumption since it is sampling with replacement which induces dependence.
 
 from scipy.stats import ttest_rel
 
@@ -229,3 +229,17 @@ print(pvalue_paired_f1_weighted) # 0.207, can not reject the null that the paire
 
 np.round(np.mean(f1_weighted_unpacked_folds),3) # 0.483
 np.round(np.mean(f1_weighted_deleted_folds),3) # 0.478
+
+# %% Vader on test
+
+df_hold_out_unpacked = df_unpacked.iloc[test_index,:]
+
+unpacked_vader_scores = df_hold_out_unpacked["tokenized"].map(sid.polarity_scores)
+unpacked_vader_scores = pd.DataFrame(list(unpacked_vader_scores))
+
+df_hold_out_unpacked["predicted"] = 0
+df_hold_out_unpacked["predicted"].iloc[np.where(unpacked_vader_scores["compound"] < -.5)[0]] = -1 #can change to 0.33
+df_hold_out_unpacked["predicted"].iloc[np.where(unpacked_vader_scores["compound"] > .5)[0]] = 1
+
+np.round(f1_score(df_hold_out_unpacked["annotate_sent"], \
+                  df_hold_out_unpacked["predicted"], average = "weighted"), decimals=3)
