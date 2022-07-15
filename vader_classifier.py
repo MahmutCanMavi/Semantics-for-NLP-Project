@@ -11,43 +11,43 @@ from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 import matplotlib.pyplot as plt
 from scipy.stats import ttest_ind
-from sklearn.model_selection import train_test_split
 
 #%%
-#Getting validation indexes, getting them from preprocess_vader/ _no_hashtags
-validation = pd.read_csv("data/validation.csv")   #Validation.csv is no_hashtags. 
-full_df=pd.read_pickle("preprocess_vader_no_hashtags.pkl")
+df = pd.read_pickle("preprocess_vader_no_hashtags.pkl")
+index_annotated = np.where(~np.isnan(df["annotate_sent"]))[0]
 
-idx=pd.Series.to_list(validation["tweet_id"])
-mask=full_df['tweet_id'].isin(idx)
-val_df=full_df.loc[mask]
+np.random.seed(1)
+test_and_val_size = np.round(len(index_annotated)*0.2)
+test_index = np.random.choice(index_annotated, size = test_and_val_size.astype(int)) # test set
+not_test_index = set(index_annotated) - set(test_index)
+not_test_index = np.array(list(not_test_index))
+val_index = np.random.choice(not_test_index, size = test_and_val_size.astype(int)) # validation set
+train_index = np.array(list(set(not_test_index) - set(val_index))) # train set
 
-
-
-#Running Vader model and setting 0.5 threshold
+# vader does not need to be trained actually...
 sid = SentimentIntensityAnalyzer()
-vader_scores = val_df["tokenized"].map(sid.polarity_scores)
+df_validation = df.iloc[val_index,:]
+vader_scores = df_validation["tokenized"].map(sid.polarity_scores)
 vader_scores=pd.DataFrame(list(vader_scores))
 
-val_df["predicted"] = 0
-val_df["predicted"].iloc[np.where(vader_scores["compound"] < -.5)[0]] = -1 #can change to 0.33
-val_df["predicted"].iloc[np.where(vader_scores["compound"] > .5)[0]] = 1
+df_validation["predicted"] = 0
+df_validation["predicted"].iloc[np.where(vader_scores["compound"] < -.5)[0]] = -1 #can change to 0.33
+df_validation["predicted"].iloc[np.where(vader_scores["compound"] > .5)[0]] = 1
 
 #%%
-# Results for F1, precision and recall.
-#Commented results: preprocess_vader_no_hashtags, preprocess_vader
+# arithmetic mean of our per-class F1-scores:
+#df_validation["predicted"] = np.random.choice(np.array([-1,0,1]), size = 311, replace= True)
+np.round(f1_score(df_validation["annotate_sent"], df_validation["predicted"], average = "macro"), decimals=3) #0.407,0.406
+np.round(f1_score(df_validation["annotate_sent"], df_validation["predicted"], average = "weighted"), decimals=3) #0.477,0.48
+np.round(f1_score(df_validation["annotate_sent"], df_validation["predicted"], average = "micro"), decimals=3) #.0479,0.482
 
-np.round(f1_score(val_df["annotate_sent"], val_df["predicted"], average = "macro"), decimals=3) #0.388,0.397
-np.round(f1_score(val_df["annotate_sent"], val_df["predicted"], average = "weighted"), decimals=3) #0.449,0.456
-np.round(f1_score(val_df["annotate_sent"], val_df["predicted"], average = "micro"), decimals=3) #.0447,0.453
+np.round(precision_score(df_validation["annotate_sent"], df_validation["predicted"], average = "macro"), decimals=3) #0.409 , 0.409
+np.round(precision_score(df_validation["annotate_sent"], df_validation["predicted"], average = "weighted"), decimals=3) #0.476, 0.477
+np.round(precision_score(df_validation["annotate_sent"], df_validation["predicted"], average = "micro"), decimals=3) #0.479, 0.482
 
-np.round(precision_score(val_df["annotate_sent"], val_df["predicted"], average = "macro"), decimals=3) #0.488 , 0.396
-np.round(precision_score(val_df["annotate_sent"], val_df["predicted"], average = "weighted"), decimals=3) #0.451, 0.459
-np.round(precision_score(val_df["annotate_sent"], val_df["predicted"], average = "micro"), decimals=3) #0.447, 0.453
-
-np.round(recall_score(val_df["annotate_sent"], val_df["predicted"], average = "macro"), decimals=3) #0.389, 0.397
-np.round(recall_score(val_df["annotate_sent"], val_df["predicted"], average = "weighted"), decimals=3) #0.447, 0.453
-np.round(recall_score(val_df["annotate_sent"], val_df["predicted"], average = "micro"), decimals=3) #0.447, 0.453
+np.round(recall_score(df_validation["annotate_sent"], df_validation["predicted"], average = "macro"), decimals=3) #0.405, 0.404
+np.round(recall_score(df_validation["annotate_sent"], df_validation["predicted"], average = "weighted"), decimals=3) #0.479, 0.482
+np.round(recall_score(df_validation["annotate_sent"], df_validation["predicted"], average = "micro"), decimals=3) #0.479, 0.482
 
 
 print(vader_scores)
@@ -67,35 +67,9 @@ plt.xlabel("Compound VADER score")
 # %%
 ################################# LOOP FOR TESTING HYPOTHESIS ###########################################
 iter=100
-size_sample=311
+size_sample=200
 df_unpacked = pd.read_pickle("preprocess_vader.pkl")
 df_no_hashtags = pd.read_pickle("preprocess_vader_no_hashtags.pkl")
-
-mask=df_unpacked['tweet_id'].isin(idx)
-
-
-df_validation_unpacked=df_unpacked.loc[mask]
-df_validation_no_hashtags=df_no_hashtags.loc[mask]
-
-
-#%% 
-iter=100
-size_sample=311
-df_unpacked = pd.read_pickle("preprocess_vader.pkl")
-df_no_hashtags=pd.read_pickle("preprocess_vader_no_hashtags.pkl")
-
-mask1=df_no_hashtags['tweet_id'].isin(idx)
-mask2=df_unpacked['tweet_id'].isin(idx)
-df_validation_unpacked=df_no_hashtags.loc[mask1]
-df_validation_no_hashtags=df_unpacked.loc[mask2]
-
-#%%
-'''
-
-
-
-
-
 index_annotated = np.where(~np.isnan(df_unpacked["annotate_sent"]))[0]
 
 #Setting both validation sets
@@ -108,7 +82,7 @@ val_index = np.random.choice(not_test_index, size = test_and_val_size.astype(int
 df_validation_unpacked = df_unpacked.iloc[val_index,:]
 df_validation_no_hashtags = df_no_hashtags.iloc[val_index,:]
 
-'''
+
 f1_macro_unpacked=np.zeros(iter)
 f1_weighted_unpacked=np.zeros(iter)
 f1_micro_unpacked=np.zeros(iter)
@@ -187,26 +161,85 @@ for i in range(iter):
 
 # %%
 t_stat_f1_macro,pvalue_f1_macro=ttest_ind(f1_macro_unpacked, f1_macro_no_hashtags,alternative="less",equal_var=False)
-print(pvalue_f1_macro) #0.5301
+print(pvalue_f1_macro)
 t_stat_f1_weighted,pvalue_f1_weighted=ttest_ind(f1_weighted_unpacked, f1_weighted_no_hashtags,alternative="less",equal_var=False)
-print(pvalue_f1_weighted) #0.6359
+print(pvalue_f1_weighted)
 t_stat_f1_micro,pvalue_f1_micro=ttest_ind(f1_micro_unpacked, f1_micro_no_hashtags,alternative="less",equal_var=False)
-print(pvalue_f1_micro)#0.7149
+print(pvalue_f1_micro)
 
 t_stat_prec_macro,pvalue_prec_macro=ttest_ind(prec_macro_unpacked, prec_macro_no_hashtags,alternative="less",equal_var=False)
-print(pvalue_prec_macro) #0.5333
+print(pvalue_prec_macro)
 t_stat_prec_weighted,pvalue_prec_weighted=ttest_ind(prec_weighted_unpacked, prec_weighted_no_hashtags,alternative="less",equal_var=False)
-print(pvalue_prec_weighted) #0.5215
+print(pvalue_prec_weighted)
 t_stat_prec_micro,pvalue_prec_micro=ttest_ind(prec_micro_unpacked, prec_micro_no_hashtags,alternative="less",equal_var=False)
-print(pvalue_prec_micro) #0.7149
+print(pvalue_prec_micro)
 
 t_stat_rec_macro,pvalue_rec_macro=ttest_ind(rec_macro_unpacked, rec_macro_no_hashtags,alternative="less",equal_var=False)
-print(pvalue_rec_macro) #0.5315
+print(pvalue_rec_macro)
 t_stat_rec_weighted,pvalue_rec_weighted=ttest_ind(rec_weighted_unpacked, rec_weighted_no_hashtags,alternative="less",equal_var=False)
-print(pvalue_rec_weighted) #0.7149
+print(pvalue_rec_weighted)
 t_stat_rec_micro,pvalue_rec_micro=ttest_ind(rec_micro_unpacked, rec_micro_no_hashtags,alternative="less",equal_var=False)
-print(pvalue_rec_micro) #0.7149
-
+print(pvalue_rec_micro)
 
 
 # %%
+# Alternative: dependent t-test for paired samples. In a paired sample t-test, each entity is measured twice, which results in pairs of observations (i.e. F1-scores) 
+# before (unpacked hashtags) and after the "treatment" (removed hashtags)
+# the independent test (ttest_ind) would assume that the two groups (unpacked hashtags and removed hashtags) are independent
+# also: changed from val_index to not_test_index to explore the full potential of the limited data set (remember: vader requires no training so we can use the training set here)
+# further: a resampled t-test violates the indepdence (between F1 scores in a group) assumption since it is sampling with replacement which induces dependence.
+
+from scipy.stats import ttest_rel
+
+df_validation_unpacked = df_unpacked.iloc[not_test_index,:]
+df_validation_no_hashtags = df_no_hashtags.iloc[not_test_index,:]
+
+folds = np.array_split(range(len(not_test_index)), 30) # non-random, non-overlappping, indepdendent
+f1_weighted_unpacked_folds = []
+f1_weighted_deleted_folds = []
+
+## unpacked
+
+unpacked_vader_scores = df_validation_unpacked["tokenized"].map(sid.polarity_scores)
+unpacked_vader_scores = pd.DataFrame(list(unpacked_vader_scores))
+
+df_validation_unpacked["predicted"] = 0
+df_validation_unpacked["predicted"].iloc[np.where(unpacked_vader_scores["compound"] < -.5)[0]] = -1 #can change to 0.33
+df_validation_unpacked["predicted"].iloc[np.where(unpacked_vader_scores["compound"] > .5)[0]] = 1
+
+for i in range(len(folds)):
+    f1_weighted_unpacked_folds.append(np.round(f1_score(df_validation_unpacked["annotate_sent"].iloc[folds[i],], \
+                                                        df_validation_unpacked["predicted"].iloc[folds[i],], average = "weighted"), decimals=3))
+
+## deleted
+
+deleted_vader_scores = df_validation_no_hashtags["tokenized"].map(sid.polarity_scores)
+deleted_vader_scores = pd.DataFrame(list(deleted_vader_scores))
+
+df_validation_no_hashtags["predicted"] = 0
+df_validation_no_hashtags["predicted"].iloc[np.where(deleted_vader_scores["compound"] < -.5)[0]] = -1 #can change to 0.33
+df_validation_no_hashtags["predicted"].iloc[np.where(deleted_vader_scores["compound"] > .5)[0]] = 1
+
+for i in range(len(folds)):
+    f1_weighted_deleted_folds.append(np.round(f1_score(df_validation_no_hashtags["annotate_sent"].iloc[folds[i],], \
+                                                       df_validation_no_hashtags["predicted"].iloc[folds[i],], average = "weighted"), decimals=3))
+
+t_stat_paired_f1_weighted, pvalue_paired_f1_weighted=ttest_rel(f1_weighted_unpacked_folds, f1_weighted_deleted_folds,alternative="two-sided")
+print(pvalue_paired_f1_weighted) # 0.207, can not reject the null that the paired difference between the samples is zero 
+
+np.round(np.mean(f1_weighted_unpacked_folds),3) # 0.483
+np.round(np.mean(f1_weighted_deleted_folds),3) # 0.478
+
+# %% Vader on test
+
+df_hold_out_unpacked = df_unpacked.iloc[test_index,:]
+
+unpacked_vader_scores = df_hold_out_unpacked["tokenized"].map(sid.polarity_scores)
+unpacked_vader_scores = pd.DataFrame(list(unpacked_vader_scores))
+
+df_hold_out_unpacked["predicted"] = 0
+df_hold_out_unpacked["predicted"].iloc[np.where(unpacked_vader_scores["compound"] < -.5)[0]] = -1 #can change to 0.33
+df_hold_out_unpacked["predicted"].iloc[np.where(unpacked_vader_scores["compound"] > .5)[0]] = 1
+
+np.round(f1_score(df_hold_out_unpacked["annotate_sent"], \
+                  df_hold_out_unpacked["predicted"], average = "weighted"), decimals=3)
